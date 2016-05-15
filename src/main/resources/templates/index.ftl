@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
 <body>
-    ${message}
+    ${content}
 </body>
 </html>
