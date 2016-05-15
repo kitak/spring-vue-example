@@ -16,7 +16,7 @@ public class VueRenderer {
             NashornScriptEngine nashornScriptEngine = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
             try {
                 nashornScriptEngine.eval(read("static/nashorn-polyfill.js"));
-                nashornScriptEngine.eval(read("static/commentBox.js"));
+                nashornScriptEngine.eval(read("static/bundle.js"));
             } catch (ScriptException e) {
                 throw new RuntimeException(e);
             }

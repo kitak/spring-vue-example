@@ -21,3 +21,5 @@ target
 *.log
 *.swp
 *.bak
+
+node_modules
