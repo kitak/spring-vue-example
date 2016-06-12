@@ -15,6 +15,7 @@ public class VueRenderer {
         protected NashornScriptEngine initialValue() {
             NashornScriptEngine nashornScriptEngine = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
             try {
+                nashornScriptEngine.eval(read("static/event-loop.js"));
                 nashornScriptEngine.eval(read("static/nashorn-polyfill.js"));
                 nashornScriptEngine.eval(read("static/bundle.js"));
             } catch (ScriptException e) {

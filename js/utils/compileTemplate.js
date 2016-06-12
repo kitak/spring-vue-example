@@ -1,4 +1,5 @@
-import { compileToFunctions } from '../vue/dist/compiler.common.js';
+import 'babel-polyfill';
+import { compileToFunctions } from '../vue/packages/vue-template-compiler';
 
 const compileTemplate = (options) => {
   const res = compileToFunctions(options.template, {

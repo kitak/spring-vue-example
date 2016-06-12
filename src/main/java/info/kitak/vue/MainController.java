@@ -17,12 +17,12 @@ public class MainController {
     @Autowired
     public MainController(CommentService service) {
         this.service = service;
-        this.vueRenderer = new VueRenderer();
     }
 
     @RequestMapping("/")
     public String index(Map<String, Object> model) throws Exception {
         List<Comment> comments = service.getComments();
+        VueRenderer vueRenderer = new VueRenderer();
         String commentBox = vueRenderer.renderCommentBox(comments);
         model.put("content", commentBox);
 
