@@ -1,4 +1,3 @@
-import 'babel-polyfill';
 import { compileToFunctions } from '../vue/packages/vue-template-compiler';
 
 const compileTemplate = (options) => {

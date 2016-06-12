@@ -1,21 +1,24 @@
+import 'babel-polyfill';
 import Vue from './vue/dist/vue.common';
 import createRenderer from './vue/packages/vue-server-renderer';
 import compileTemplate from './utils/compileTemplate';
+import awaitServer from './utils/awaitServer';
 const { renderToString } = createRenderer();
-
-console.assert(global.exec);
 
 global.renderServer = (comments) => {
   var data = Java.from(comments);
-  return global.exec(() => {
-    const done = global.async();
-    renderToString(new Vue(compileTemplate({
-      data: function() { return {}; },
-      template: '<p>hello</p>'
-    })), (err, res) => {
-      setTimeout(() => {
+
+  var results = awaitServer((done) => {
+      renderToString(new Vue(compileTemplate({
+        data: function() { return {}; },
+        template: '<p>hello</p>'
+      })), (err, res) => {
         done(err, res);
-      }, 0);
+      });
     });
-  }, -1);
+  if (results.error) {
+    throw results.error;
+  } else {
+    return results.result;
+  }
 };
