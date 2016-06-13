@@ -27,15 +27,59 @@ var _createRenderer = (0, _vueServerRenderer2.default)();
 var renderToString = _createRenderer.renderToString;
 
 
+_vue2.default.config._isServer = true;
+
+var CommentForm = _vue2.default.extend((0, _compileTemplate2.default)({
+  props: ['onCommentSubmit'],
+  template: '\n<form v-on:submit.prevent>\n  <input type="text" v-model="author">\n  <input type="text" v-model="text">\n  <input type="submit" value="Post" @click="handleSubmit">\n</form>\n  ',
+  data: function data() {
+    return {
+      author: '',
+      text: ''
+    };
+  },
+  methods: {
+    handleSubmit: function handleSubmit() {
+      this.onCommentSubmit({ author: this.author, text: this.text });
+    }
+  }
+}));
+
+var CommentList = _vue2.default.extend((0, _compileTemplate2.default)({
+  props: ['comments'],
+  template: '\n<div class="commentList">\n  <div class="comment" v-for="comment in comments">\n    <h2>{{ comment.author }}</h2>\n    <span v-html="comment.text"></span>\n  </div>\n</div>\n'
+}));
+
+var CommentBox = _vue2.default.extend((0, _compileTemplate2.default)({
+  props: ['data', 'url', 'pollInterval'],
+  data: function data() {
+    return {
+      handleCommentSubmit: function handleCommentSubmit() {}
+    };
+  },
+  components: {
+    'comment-list': CommentList,
+    'comment-form': CommentForm
+  },
+  template: '\n<div class="commentBox">\n  <h1>Comments</h1>\n  <comment-list :comments="data"></comment-list>\n  <comment-form :on-comment-submit="handleCommentSubmit"></comment-form>\n</div>\n'
+}));
+
 global.renderServer = function (comments) {
-  var data = Java.from(comments);
+  var _data = Java.from(comments);
 
   var results = (0, _awaitServer2.default)(function (done) {
     renderToString(new _vue2.default((0, _compileTemplate2.default)({
       data: function data() {
-        return {};
+        return {
+          data: _data,
+          url: "comments.json",
+          pollInterval: 5000
+        };
       },
-      template: '<p>hello</p>'
+      components: {
+        'comment-box': CommentBox
+      },
+      template: '\n<comment-box :data="data" :url="url" :poll-interval="pollInterval"></comment-box>\n'
     })), function (err, res) {
       done(err, res);
     });
