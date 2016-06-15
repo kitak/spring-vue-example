@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html>
 <body>
-    ${content}
+    <div id="content">${content}</div>
+    <script src="bundle.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            renderClient(${data});
+        });
+    </script>
 </body>
 </html>

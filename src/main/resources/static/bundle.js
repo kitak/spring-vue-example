@@ -27,11 +27,9 @@ var _createRenderer = (0, _vueServerRenderer2.default)();
 var renderToString = _createRenderer.renderToString;
 
 
-_vue2.default.config._isServer = true;
-
 var CommentForm = _vue2.default.extend((0, _compileTemplate2.default)({
   props: ['onCommentSubmit'],
-  template: '\n<form v-on:submit.prevent>\n  <input type="text" v-model="author">\n  <input type="text" v-model="text">\n  <input type="submit" value="Post" @click="handleSubmit">\n</form>\n  ',
+  template: '\n<form>\n  <input type="text" v-model="author">\n  <input type="text" v-model="text">\n  <input type="submit" value="Post" @click.prevent="handleSubmit">\n</form>\n  ',
   data: function data() {
     return {
       author: '',
@@ -40,7 +38,14 @@ var CommentForm = _vue2.default.extend((0, _compileTemplate2.default)({
   },
   methods: {
     handleSubmit: function handleSubmit() {
+      var author = this.author.trim();
+      var text = this.text.trim();
+      if (!author || !text) {
+        return;
+      }
       this.onCommentSubmit({ author: this.author, text: this.text });
+      this.author = '';
+      this.text = '';
     }
   }
 }));
@@ -51,36 +56,78 @@ var CommentList = _vue2.default.extend((0, _compileTemplate2.default)({
 }));
 
 var CommentBox = _vue2.default.extend((0, _compileTemplate2.default)({
-  props: ['data', 'url', 'pollInterval'],
   data: function data() {
     return {
-      handleCommentSubmit: function handleCommentSubmit() {}
+      comments: [],
+      url: "comments.json",
+      pollInterval: 5000
     };
+  },
+  methods: {
+    handleCommentSubmit: function handleCommentSubmit(comment) {
+      var _this = this;
+
+      this.comments.push(comment);
+      _vue2.default.nextTick(function () {
+        fetch(_this.url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(comment)
+        }).then(function (response) {
+          return response.json();
+        }).then(function (comments) {
+          _this.comments = comments;
+        }).catch(function (e) {
+          console.error(e);
+        });
+      });
+    },
+    loadCommentsFromServer: function loadCommentsFromServer() {
+      var _this2 = this;
+
+      fetch(this.url).then(function (response) {
+        return response.json();
+      }).then(function (comments) {
+        _this2.comments = comments;
+      }).catch(function (e) {
+        console.error(e);
+      });
+    }
+  },
+  mounted: function mounted() {
+    console.log(this.$isServer);
+    if (!this.$isServer) {
+      this.loadCommentsFromServer();
+      setInterval(this.loadCommentsFromServer.bind(this), this.pollInterval);
+    }
   },
   components: {
     'comment-list': CommentList,
     'comment-form': CommentForm
   },
-  template: '\n<div class="commentBox">\n  <h1>Comments</h1>\n  <comment-list :comments="data"></comment-list>\n  <comment-form :on-comment-submit="handleCommentSubmit"></comment-form>\n</div>\n'
+  template: '\n<div class="commentBox">\n  <h1>Comments</h1>\n  <comment-list :comments="comments"></comment-list>\n  <comment-form :on-comment-submit="handleCommentSubmit"></comment-form>\n</div>\n'
 }));
 
+global.renderClient = function (comments) {
+  var data = comments || [];
+
+  var vm = new CommentBox();
+  vm.comments = data;
+  vm.$mount('#content');
+};
+
 global.renderServer = function (comments) {
-  var _data = Java.from(comments);
+  _vue2.default.config._isServer = true;
+
+  var data = Java.from(comments);
 
   var results = (0, _awaitServer2.default)(function (done) {
-    renderToString(new _vue2.default((0, _compileTemplate2.default)({
-      data: function data() {
-        return {
-          data: _data,
-          url: "comments.json",
-          pollInterval: 5000
-        };
-      },
-      components: {
-        'comment-box': CommentBox
-      },
-      template: '\n<comment-box :data="data" :url="url" :poll-interval="pollInterval"></comment-box>\n'
-    })), function (err, res) {
+    var vm = new CommentBox();
+    vm.comments = data;
+    renderToString(vm, function (err, res) {
       done(err, res);
     });
   });
@@ -510,7 +557,7 @@ var nextTick = function () {
 
 var Set$1 = void 0;
 /* istanbul ignore if */
-if (typeof Set !== 'undefined' && Set.toString().match(/native code/)) {
+if (typeof Set !== 'undefined' && /native code/.test(Set.toString())) {
   // use native Set when available.
   Set$1 = Set;
 } else {
@@ -2054,19 +2101,19 @@ function renderMixin(Vue) {
     if (Array.isArray(val)) {
       ret = new Array(val.length);
       for (i = 0, l = val.length; i < l; i++) {
-        ret[i] = render(val[i], i, i);
+        ret[i] = render(val[i], i);
       }
     } else if (typeof val === 'number') {
       ret = new Array(val);
       for (i = 0; i < val; i++) {
-        ret[i] = render(i + 1, i, i);
+        ret[i] = render(i + 1, i);
       }
     } else if (isObject(val)) {
       keys = Object.keys(val);
       ret = new Array(keys.length);
       for (i = 0, l = keys.length; i < l; i++) {
         key = keys[i];
-        ret[i] = render(val[key], i, key);
+        ret[i] = render(val[key], key, i);
       }
     }
     return ret;
@@ -2245,7 +2292,7 @@ function initInternalComponent(vm, options) {
   opts._componentTag = options._componentTag;
   if (options.render) {
     opts.render = options.render;
-    opts.staticRenderFns = opts.staticRenderFns;
+    opts.staticRenderFns = options.staticRenderFns;
   }
 }
 
@@ -2707,6 +2754,7 @@ var util = Object.freeze({
 	hasProto: hasProto,
 	inBrowser: inBrowser,
 	devtools: devtools,
+	UA: UA,
 	nextTick: nextTick,
 	get _Set () { return Set$1; },
 	mergeOptions: mergeOptions,
@@ -2903,7 +2951,7 @@ Object.defineProperty(Vue.prototype, '$isServer', {
   }
 });
 
-Vue.version = '2.0.0-alpha.1';
+Vue.version = '2.0.0-alpha.2';
 
 // attributes that should be using props for binding
 var mustUseProp = makeMap('value,selected,checked,muted');
@@ -2911,6 +2959,8 @@ var mustUseProp = makeMap('value,selected,checked,muted');
 var isEnumeratedAttr = makeMap('contenteditable,draggable,spellcheck');
 
 var isBooleanAttr = makeMap('allowfullscreen,async,autofocus,autoplay,checked,compact,controls,declare,' + 'default,defaultchecked,defaultmuted,defaultselected,defer,disabled,' + 'enabled,formnovalidate,hidden,indeterminate,inert,ismap,itemscope,loop,multiple,' + 'muted,nohref,noresize,noshade,novalidate,nowrap,open,pauseonexit,readonly,' + 'required,reversed,scoped,seamless,selected,sortable,translate,' + 'truespeed,typemustmatch,visible');
+
+var isAttr = makeMap('accept,accept-charset,accesskey,action,align,alt,async,autocomplete,' + 'autofocus,autoplay,autosave,bgcolor,border,buffered,challenge,charset,' + 'checked,cite,class,code,codebase,color,cols,colspan,content,http-equiv,' + 'name,contenteditable,contextmenu,controls,coords,data,datetime,default,' + 'defer,dir,dirname,disabled,download,draggable,dropzone,enctype,method,for,' + 'form,formaction,headers,<th>,height,hidden,high,href,hreflang,http-equiv,' + 'icon,id,ismap,itemprop,keytype,kind,label,lang,language,list,loop,low,' + 'manifest,max,maxlength,media,method,GET,POST,min,multiple,email,file,' + 'muted,name,novalidate,open,optimum,pattern,ping,placeholder,poster,' + 'preload,radiogroup,readonly,rel,required,reversed,rows,rowspan,sandbox,' + 'scope,scoped,seamless,selected,shape,size,type,text,password,sizes,span,' + 'spellcheck,src,srcdoc,srclang,srcset,start,step,style,summary,tabindex,' + 'target,title,type,usemap,value,width,wrap');
 
 var xlinkNS = 'http://www.w3.org/1999/xlink';
 
@@ -3026,10 +3076,7 @@ function isUnknownElement(tag) {
     // http://stackoverflow.com/a/28210364/1070244
     return unknownElementCache[tag] = el.constructor === window.HTMLUnknownElement || el.constructor === window.HTMLElement;
   } else {
-    return unknownElementCache[tag] = /HTMLUnknownElement/.test(el.toString()) &&
-    // Chrome returns unknown for several HTML5 elements.
-    // https://code.google.com/p/chromium/issues/detail?id=540526
-    !/^(data|time|rtc|rb)$/.test(tag);
+    return unknownElementCache[tag] = /HTMLUnknownElement/.test(el.toString());
   }
 }
 
@@ -4201,7 +4248,7 @@ if (isIE9) {
 var model = {
   bind: function bind(el, binding, vnode) {
     if (process.env.NODE_ENV !== 'production') {
-      if (!vnode.tag.match(/input|select|textarea/)) {
+      if (!/input|select|textarea/.test(vnode.tag)) {
         warn('v-model is not supported on element type: <' + vnode.tag + '>. ' + 'If you are working with contenteditable, it\'s recommended to ' + 'wrap a library dedicated for that purpose inside a custom component.', vnode.context);
       }
     }
@@ -7640,6 +7687,7 @@ exports.SourceNode = require('./lib/source-node').SourceNode;
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
 var stream = _interopDefault(require('stream'));
+var entities = require('entities');
 
 var babelHelpers = {};
 
@@ -8054,7 +8102,7 @@ var nextTick = function () {
 
 var Set$1 = void 0;
 /* istanbul ignore if */
-if (typeof Set !== 'undefined' && Set.toString().match(/native code/)) {
+if (typeof Set !== 'undefined' && /native code/.test(Set.toString())) {
   // use native Set when available.
   Set$1 = Set;
 } else {
@@ -9684,19 +9732,19 @@ function renderMixin(Vue) {
     if (Array.isArray(val)) {
       ret = new Array(val.length);
       for (i = 0, l = val.length; i < l; i++) {
-        ret[i] = render(val[i], i, i);
+        ret[i] = render(val[i], i);
       }
     } else if (typeof val === 'number') {
       ret = new Array(val);
       for (i = 0; i < val; i++) {
-        ret[i] = render(i + 1, i, i);
+        ret[i] = render(i + 1, i);
       }
     } else if (isObject(val)) {
       keys = Object.keys(val);
       ret = new Array(keys.length);
       for (i = 0, l = keys.length; i < l; i++) {
         key = keys[i];
-        ret[i] = render(val[key], i, key);
+        ret[i] = render(val[key], key, i);
       }
     }
     return ret;
@@ -10034,7 +10082,7 @@ function initInternalComponent(vm, options) {
   opts._componentTag = options._componentTag;
   if (options.render) {
     opts.render = options.render;
-    opts.staticRenderFns = opts.staticRenderFns;
+    opts.staticRenderFns = options.staticRenderFns;
   }
 }
 
@@ -10265,16 +10313,19 @@ function mergeHook(a, b) {
   };
 }
 
+var encodeHTMLCached = cached(entities.encodeHTML);
+
 function createRenderFunction(modules, directives, isUnaryTag) {
   function renderNode(node, write, next, isRoot) {
     if (node.componentOptions) {
-      var child = createComponentInstanceForVnode(node);
-      renderNode(child._render(), write, next, isRoot);
+      var child = createComponentInstanceForVnode(node)._render();
+      child.parent = node;
+      renderNode(child, write, next, isRoot);
     } else {
       if (node.tag) {
         renderElement(node, write, next, isRoot);
       } else {
-        write(node.text, next);
+        write(node.raw ? node.text : encodeHTMLCached(node.text), next);
       }
     }
   }
@@ -10337,6 +10388,14 @@ function createRenderFunction(modules, directives, isUnaryTag) {
           markup += res;
         }
       }
+    }
+    // attach scoped CSS ID
+    while (node) {
+      var scopeId = node.context.$options._scopeId;
+      if (scopeId) {
+        markup += ' ' + scopeId;
+      }
+      node = node.parent;
     }
     return markup + '>';
   }
@@ -10408,6 +10467,12 @@ var isEnumeratedAttr = makeMap('contenteditable,draggable,spellcheck');
 
 var isBooleanAttr = makeMap('allowfullscreen,async,autofocus,autoplay,checked,compact,controls,declare,' + 'default,defaultchecked,defaultmuted,defaultselected,defer,disabled,' + 'enabled,formnovalidate,hidden,indeterminate,inert,ismap,itemscope,loop,multiple,' + 'muted,nohref,noresize,noshade,novalidate,nowrap,open,pauseonexit,readonly,' + 'required,reversed,scoped,seamless,selected,sortable,translate,' + 'truespeed,typemustmatch,visible');
 
+var isAttr = makeMap('accept,accept-charset,accesskey,action,align,alt,async,autocomplete,' + 'autofocus,autoplay,autosave,bgcolor,border,buffered,challenge,charset,' + 'checked,cite,class,code,codebase,color,cols,colspan,content,http-equiv,' + 'name,contenteditable,contextmenu,controls,coords,data,datetime,default,' + 'defer,dir,dirname,disabled,download,draggable,dropzone,enctype,method,for,' + 'form,formaction,headers,<th>,height,hidden,high,href,hreflang,http-equiv,' + 'icon,id,ismap,itemprop,keytype,kind,label,lang,language,list,loop,low,' + 'manifest,max,maxlength,media,method,GET,POST,min,multiple,email,file,' + 'muted,name,novalidate,open,optimum,pattern,ping,placeholder,poster,' + 'preload,radiogroup,readonly,rel,required,reversed,rows,rowspan,sandbox,' + 'scope,scoped,seamless,selected,shape,size,type,text,password,sizes,span,' + 'spellcheck,src,srcdoc,srclang,srcset,start,step,style,summary,tabindex,' + 'target,title,type,usemap,value,width,wrap');
+
+/* istanbul ignore next */
+var isRenderableAttr = function isRenderableAttr(name) {
+  return isAttr(name) || name.indexOf('data-') === 0 || name.indexOf('aria-') === 0;
+};
 var propsToAttrMap = {
   acceptCharset: 'accept-charset',
   className: 'class',
@@ -10504,36 +10569,65 @@ var isIE9 = UA$1 && UA$1.indexOf('msie 9.0') > 0;
 var isAndroid = UA$1 && UA$1.indexOf('android') > 0;
 
 function renderAttrs(node) {
-  if (node.data.attrs || node.data.props || node.data.staticAttrs) {
-    return serialize(node.data.staticAttrs) + serialize(node.data.attrs) + serialize(node.data.props, true);
+  var res = '';
+  if (node.data.staticAttrs) {
+    res += render(node.data.staticAttrs);
   }
+  if (node.data.attrs) {
+    res += render(node.data.attrs);
+  }
+  return res;
 }
 
-function serialize(attrs, asProps) {
+function render(attrs) {
   var res = '';
-  if (!attrs) {
-    return res;
-  }
   for (var _key in attrs) {
     if (_key === 'style') {
       // leave it to the style module
       continue;
     }
-    if (asProps) {
-      _key = propsToAttrMap[_key] || _key.toLowerCase();
+    res += renderAttr(_key, attrs[_key]);
+  }
+  return res;
+}
+
+function renderAttr(key, value) {
+  if (isBooleanAttr(key)) {
+    if (!isFalsyAttrValue(value)) {
+      return ' ' + key + '="' + key + '"';
     }
-    var value = attrs[_key];
-    if (isBooleanAttr(_key)) {
-      if (!isFalsyAttrValue(value)) {
-        res += ' ' + _key + '="' + _key + '"';
+  } else if (isEnumeratedAttr(key)) {
+    return ' ' + key + '="' + (isFalsyAttrValue(value) || value === 'false' ? 'false' : 'true') + '"';
+  } else if (!isFalsyAttrValue(value)) {
+    return ' ' + key + '="' + value + '"';
+  }
+  return '';
+}
+
+function props (node) {
+  var props = node.data.props;
+  var res = '';
+  if (props) {
+    for (var key in props) {
+      if (key === 'innerHTML') {
+        setText(node, props[key], true);
+      } else if (key === 'textContent') {
+        setText(node, props[key]);
+      } else {
+        var attr = propsToAttrMap[key] || key.toLowerCase();
+        if (isRenderableAttr(attr)) {
+          res += renderAttr(attr, props[key]);
+        }
       }
-    } else if (isEnumeratedAttr(_key)) {
-      res += ' ' + _key + '="' + (isFalsyAttrValue(value) || value === 'false' ? 'false' : 'true') + '"';
-    } else if (!isFalsyAttrValue(value)) {
-      res += ' ' + _key + '="' + value + '"';
     }
   }
   return res;
+}
+
+function setText(node, text, raw) {
+  var child = new VNode(undefined, undefined, undefined, text);
+  child.raw = raw;
+  node.children = [child];
 }
 
 function renderClass(node) {
@@ -10559,7 +10653,7 @@ function renderStyle(node) {
   }
 }
 
-var modules = [renderAttrs, renderClass, renderStyle];
+var modules = [renderAttrs, props, renderClass, renderStyle];
 
 function show(node, dir) {
   if (!dir.value) {
@@ -10587,7 +10681,7 @@ function publicCreateRenderer() {
 
 module.exports = publicCreateRenderer;
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"_process":333,"stream":345}],26:[function(require,module,exports){
+},{"_process":333,"entities":6,"stream":345}],26:[function(require,module,exports){
 (function (process,global){
 'use strict';
 
@@ -10979,7 +11073,7 @@ var nextTick = function () {
 
 var Set$1 = void 0;
 /* istanbul ignore if */
-if (typeof Set !== 'undefined' && Set.toString().match(/native code/)) {
+if (typeof Set !== 'undefined' && /native code/.test(Set.toString())) {
   // use native Set when available.
   Set$1 = Set;
 } else {
@@ -12504,19 +12598,19 @@ function renderMixin(Vue) {
     if (Array.isArray(val)) {
       ret = new Array(val.length);
       for (i = 0, l = val.length; i < l; i++) {
-        ret[i] = render(val[i], i, i);
+        ret[i] = render(val[i], i);
       }
     } else if (typeof val === 'number') {
       ret = new Array(val);
       for (i = 0; i < val; i++) {
-        ret[i] = render(i + 1, i, i);
+        ret[i] = render(i + 1, i);
       }
     } else if (isObject(val)) {
       keys = Object.keys(val);
       ret = new Array(keys.length);
       for (i = 0, l = keys.length; i < l; i++) {
         key = keys[i];
-        ret[i] = render(val[key], i, key);
+        ret[i] = render(val[key], key, i);
       }
     }
     return ret;
@@ -12695,7 +12789,7 @@ function initInternalComponent(vm, options) {
   opts._componentTag = options._componentTag;
   if (options.render) {
     opts.render = options.render;
-    opts.staticRenderFns = opts.staticRenderFns;
+    opts.staticRenderFns = options.staticRenderFns;
   }
 }
 
@@ -13112,6 +13206,8 @@ var isEnumeratedAttr = makeMap('contenteditable,draggable,spellcheck');
 
 var isBooleanAttr = makeMap('allowfullscreen,async,autofocus,autoplay,checked,compact,controls,declare,' + 'default,defaultchecked,defaultmuted,defaultselected,defer,disabled,' + 'enabled,formnovalidate,hidden,indeterminate,inert,ismap,itemscope,loop,multiple,' + 'muted,nohref,noresize,noshade,novalidate,nowrap,open,pauseonexit,readonly,' + 'required,reversed,scoped,seamless,selected,sortable,translate,' + 'truespeed,typemustmatch,visible');
 
+var isAttr = makeMap('accept,accept-charset,accesskey,action,align,alt,async,autocomplete,' + 'autofocus,autoplay,autosave,bgcolor,border,buffered,challenge,charset,' + 'checked,cite,class,code,codebase,color,cols,colspan,content,http-equiv,' + 'name,contenteditable,contextmenu,controls,coords,data,datetime,default,' + 'defer,dir,dirname,disabled,download,draggable,dropzone,enctype,method,for,' + 'form,formaction,headers,<th>,height,hidden,high,href,hreflang,http-equiv,' + 'icon,id,ismap,itemprop,keytype,kind,label,lang,language,list,loop,low,' + 'manifest,max,maxlength,media,method,GET,POST,min,multiple,email,file,' + 'muted,name,novalidate,open,optimum,pattern,ping,placeholder,poster,' + 'preload,radiogroup,readonly,rel,required,reversed,rows,rowspan,sandbox,' + 'scope,scoped,seamless,selected,shape,size,type,text,password,sizes,span,' + 'spellcheck,src,srcdoc,srclang,srcset,start,step,style,summary,tabindex,' + 'target,title,type,usemap,value,width,wrap');
+
 var isReservedTag = makeMap('html,base,head,link,meta,style,title,' + 'address,article,footer,header,h1,h2,h3,h4,h5,h6,hgroup,nav,section,' + 'div,dd,dl,dt,figcaption,figure,hr,img,li,main,ol,p,pre,ul,' + 'a,b,abbr,bdi,bdo,br,cite,code,data,dfn,em,i,kbd,mark,q,rp,rt,rtc,ruby,' + 's,samp,small,span,strong,sub,sup,time,u,var,wbr,area,audio,map,track,video,' + 'embed,object,param,source,canvas,script,noscript,del,ins,' + 'caption,col,colgroup,table,thead,tbody,td,th,tr,' + 'button,datalist,fieldset,form,input,label,legend,meter,optgroup,option,' + 'output,progress,select,textarea,' + 'details,dialog,menu,menuitem,summary,' + 'content,element,shadow,template');
 
 var isUnaryTag = makeMap('area,base,br,col,embed,frame,hr,img,input,isindex,keygen,' + 'link,meta,param,source,track,wbr', true);
@@ -13169,7 +13265,7 @@ var IS_REGEX_CAPTURING_BROKEN = false;
 });
 
 // Special Elements (can contain anything)
-var special = makeMap('script,style', true);
+var isSpecialTag = makeMap('script,style', true);
 
 var reCache = {};
 
@@ -13189,10 +13285,8 @@ function parseHTML(html, handler) {
   var attribute = attrForHandler(handler);
   var expectHTML = handler.expectHTML;
   var isUnaryTag = handler.isUnaryTag || no;
-  var isSpecialTag = handler.isSpecialTag || special;
+  var index = 0;
   var last = void 0,
-      prevTag = void 0,
-      nextTag = void 0,
       lastTag = void 0;
   while (html) {
     last = html;
@@ -13205,8 +13299,7 @@ function parseHTML(html, handler) {
           var commentEnd = html.indexOf('-->');
 
           if (commentEnd >= 0) {
-            html = html.substring(commentEnd + 3);
-            prevTag = '';
+            advance(commentEnd + 3);
             continue;
           }
         }
@@ -13216,8 +13309,7 @@ function parseHTML(html, handler) {
           var conditionalEnd = html.indexOf(']>');
 
           if (conditionalEnd >= 0) {
-            html = html.substring(conditionalEnd + 2);
-            prevTag = '';
+            advance(conditionalEnd + 2);
             continue;
           }
         }
@@ -13228,26 +13320,23 @@ function parseHTML(html, handler) {
           if (handler.doctype) {
             handler.doctype(doctypeMatch[0]);
           }
-          html = html.substring(doctypeMatch[0].length);
-          prevTag = '';
+          advance(doctypeMatch[0].length);
           continue;
         }
 
         // End tag:
         var endTagMatch = html.match(endTag);
         if (endTagMatch) {
-          html = html.substring(endTagMatch[0].length);
-          endTagMatch[0].replace(endTag, parseEndTag);
-          prevTag = '/' + endTagMatch[1].toLowerCase();
+          var curIndex = index;
+          advance(endTagMatch[0].length);
+          parseEndTag(endTagMatch[0], endTagMatch[1], curIndex, index);
           continue;
         }
 
         // Start tag:
-        var startTagMatch = parseStartTag(html);
+        var startTagMatch = parseStartTag();
         if (startTagMatch) {
-          html = startTagMatch.rest;
           handleStartTag(startTagMatch);
-          prevTag = startTagMatch.tagName.toLowerCase();
           continue;
         }
       }
@@ -13255,35 +13344,22 @@ function parseHTML(html, handler) {
       var text = void 0;
       if (textEnd >= 0) {
         text = html.substring(0, textEnd);
-        html = html.substring(textEnd);
+        advance(textEnd);
       } else {
         text = html;
         html = '';
       }
 
-      // next tag
-      var nextTagMatch = parseStartTag(html);
-      if (nextTagMatch) {
-        nextTag = nextTagMatch.tagName;
-      } else {
-        nextTagMatch = html.match(endTag);
-        if (nextTagMatch) {
-          nextTag = '/' + nextTagMatch[1];
-        } else {
-          nextTag = '';
-        }
-      }
-
       if (handler.chars) {
-        handler.chars(text, prevTag, nextTag);
+        handler.chars(text);
       }
-      prevTag = '';
     } else {
       (function () {
         var stackedTag = lastTag.toLowerCase();
-        var reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)</' + stackedTag + '[^>]*>', 'i'));
-
-        html = html.replace(reStackedTag, function (all, text) {
+        var reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'));
+        var endTagLength = 0;
+        var rest = html.replace(reStackedTag, function (all, text, endTag) {
+          endTagLength = endTag.length;
           if (stackedTag !== 'script' && stackedTag !== 'style' && stackedTag !== 'noscript') {
             text = text.replace(/<!--([\s\S]*?)-->/g, '$1').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
           }
@@ -13292,8 +13368,9 @@ function parseHTML(html, handler) {
           }
           return '';
         });
-
-        parseEndTag('</' + stackedTag + '>', stackedTag);
+        index += html.length - rest.length;
+        html = rest;
+        parseEndTag('</' + stackedTag + '>', stackedTag, index - endTagLength, index);
       })();
     }
 
@@ -13302,28 +13379,33 @@ function parseHTML(html, handler) {
     }
   }
 
-  if (!handler.partialMarkup) {
-    // Clean up any remaining tags
-    parseEndTag();
+  // Clean up any remaining tags
+  parseEndTag();
+
+  function advance(n) {
+    index += n;
+    html = html.substring(n);
   }
 
-  function parseStartTag(input) {
-    var start = input.match(startTagOpen);
+  function parseStartTag() {
+    var start = html.match(startTagOpen);
     if (start) {
       var match = {
         tagName: start[1],
-        attrs: []
+        attrs: [],
+        start: index
       };
-      input = input.slice(start[0].length);
+      advance(start[0].length);
       var end = void 0,
           attr = void 0;
-      while (!(end = input.match(startTagClose)) && (attr = input.match(attribute))) {
-        input = input.slice(attr[0].length);
+      while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
+        advance(attr[0].length);
         match.attrs.push(attr);
       }
       if (end) {
         match.unarySlash = end[1];
-        match.rest = input.slice(end[0].length);
+        advance(end[0].length);
+        match.end = index;
         return match;
       }
     }
@@ -13373,12 +13455,14 @@ function parseHTML(html, handler) {
     }
 
     if (handler.start) {
-      handler.start(tagName, attrs, unary, unarySlash);
+      handler.start(tagName, attrs, unary, match.start, match.end);
     }
   }
 
-  function parseEndTag(tag, tagName) {
+  function parseEndTag(tag, tagName, start, end) {
     var pos = void 0;
+    if (start == null) start = index;
+    if (end == null) end = index;
 
     // Find the closest opened tag of the same type
     if (tagName) {
@@ -13397,7 +13481,7 @@ function parseHTML(html, handler) {
       // Close all the open elements, up the stack
       for (var i = stack.length - 1; i >= pos; i--) {
         if (handler.end) {
-          handler.end(stack[i].tag, stack[i].attrs, i > pos || !tag);
+          handler.end(stack[i].tag, start, end);
         }
       }
 
@@ -13406,14 +13490,14 @@ function parseHTML(html, handler) {
       lastTag = pos && stack[pos - 1].tag;
     } else if (tagName.toLowerCase() === 'br') {
       if (handler.start) {
-        handler.start(tagName, [], true, '');
+        handler.start(tagName, [], true, start, end);
       }
     } else if (tagName.toLowerCase() === 'p') {
       if (handler.start) {
-        handler.start(tagName, [], false, '', true);
+        handler.start(tagName, [], false, start, end);
       }
       if (handler.end) {
-        handler.end(tagName, []);
+        handler.end(tagName, start, end);
       }
     }
   }
@@ -13624,12 +13708,12 @@ function getAndRemoveAttr(el, name) {
 }
 
 var dirRE = /^v-|^@|^:/;
+var forAliasRE = /(.*)\s+(?:in|of)\s+(.*)/;
+var forIteratorRE = /\(([^,]*),([^,]*)(?:,([^,]*))?\)/;
 var bindRE = /^:|^v-bind:/;
 var onRE = /^@|^v-on:/;
 var argRE = /:(.*)$/;
 var modifierRE = /\.[^\.]+/g;
-var forAliasRE = /(.*)\s+(?:in|of)\s+(.*)/;
-var forIteratorRE = /\((.*),(.*)\)/;
 var camelRE = /[a-z\d][A-Z]/;
 
 var decodeHTMLCached = cached(entities.decodeHTML);
@@ -13655,6 +13739,7 @@ function parse(template, options) {
   postTransforms = pluckModuleFunction(options.modules, 'postTransformNode');
   delimiters = options.delimiters;
   var stack = [];
+  var preserveWhitespace = options.preserveWhitespace !== false;
   var root = void 0;
   var currentParent = void 0;
   var inPre = false;
@@ -13786,7 +13871,7 @@ function parse(template, options) {
       }
       text = currentParent.tag === 'pre' || text.trim() ? decodeHTMLCached(text)
       // only preserve whitespace if its not right after a starting tag
-      : currentParent.children.length ? ' ' : '';
+      : preserveWhitespace && currentParent.children.length ? ' ' : '';
       if (text) {
         var expression = void 0;
         if (!inPre && text !== ' ' && (expression = parseText(text, delimiters))) {
@@ -13848,8 +13933,11 @@ function processFor(el) {
     var alias = inMatch[1].trim();
     var iteratorMatch = alias.match(forIteratorRE);
     if (iteratorMatch) {
-      el.iterator = iteratorMatch[1].trim();
-      el.alias = iteratorMatch[2].trim();
+      el.alias = iteratorMatch[1].trim();
+      el.iterator1 = iteratorMatch[2].trim();
+      if (iteratorMatch[3]) {
+        el.iterator2 = iteratorMatch[3].trim();
+      }
     } else {
       el.alias = alias;
     }
@@ -14214,9 +14302,9 @@ function generate(ast, options) {
 }
 
 function genElement(el) {
-  if (el.for) {
+  if (el.for && !el.forProcessed) {
     return genFor(el);
-  } else if (el.if) {
+  } else if (el.if && !el.ifProcessed) {
     return genIf(el);
   } else if (el.tag === 'template' && !el.slotTarget) {
     return genChildren(el) || 'void 0';
@@ -14258,7 +14346,7 @@ function genElement(el) {
 
 function genIf(el) {
   var exp = el.if;
-  el.if = null; // avoid recursion
+  el.ifProcessed = true; // avoid recursion
   return '(' + exp + ')?' + genElement(el) + ':' + genElse(el);
 }
 
@@ -14269,9 +14357,10 @@ function genElse(el) {
 function genFor(el) {
   var exp = el.for;
   var alias = el.alias;
-  var iterator = el.iterator;
-  el.for = null; // avoid recursion
-  return '(' + exp + ')&&_l((' + exp + '),' + ('function(' + alias + ',$index,' + (iterator || '$key') + '){') + ('return ' + genElement(el)) + '})';
+  var iterator1 = el.iterator1 ? ',' + el.iterator1 : '';
+  var iterator2 = el.iterator2 ? ',' + el.iterator2 : '';
+  el.forProcessed = true; // avoid recursion
+  return '(' + exp + ')&&_l((' + exp + '),' + ('function(' + alias + iterator1 + iterator2 + '){') + ('return ' + genElement(el)) + '})';
 }
 
 function genData(el) {
@@ -14448,7 +14537,10 @@ function compile$2(template, options) {
   };
 }
 
-var keywordRE = new RegExp('\\b' + ('do,if,in,for,let,new,try,var,case,else,with,await,break,catch,class,const,' + 'super,throw,while,yield,delete,export,import,return,switch,typeof,default,' + 'extends,finally,continue,debugger,function,arguments,instanceof').split(',').join('\\b|\\b') + '\\b');
+// operators like typeof, instanceof and in are allowed
+var prohibitedKeywordRE = new RegExp('\\b' + ('do,if,for,let,new,try,var,case,else,with,await,break,catch,class,const,' + 'super,throw,while,yield,delete,export,import,return,switch,default,' + 'extends,finally,continue,debugger,function,arguments').split(',').join('\\b|\\b') + '\\b');
+// check valid identifier for v-for
+var identRE = /[^\w$\.](?:[A-Za-z_$][\w$]*)/;
 
 // detect problematic expressions in a template
 function detectErrors(ast) {
@@ -14465,7 +14557,11 @@ function checkNode(node, errors) {
       if (dirRE.test(name)) {
         var value = node.attrsMap[name];
         if (value) {
-          checkExpression(value, name + '="' + value + '"', errors);
+          if (name === 'v-for') {
+            checkFor(node, 'v-for="' + value + '"', errors);
+          } else {
+            checkExpression(value, name + '="' + value + '"', errors);
+          }
         }
       }
     }
@@ -14479,14 +14575,27 @@ function checkNode(node, errors) {
   }
 }
 
+function checkFor(node, text, errors) {
+  checkExpression(node.for || '', text, errors);
+  checkIdentifier(node.alias, 'v-for alias', text, errors);
+  checkIdentifier(node.iterator1, 'v-for iterator', text, errors);
+  checkIdentifier(node.iterator2, 'v-for iterator', text, errors);
+}
+
+function checkIdentifier(ident, type, text, errors) {
+  if (typeof ident === 'string' && !identRE.test(ident)) {
+    errors.push('- invalid ' + type + ' "' + ident + '" in expression: ' + text);
+  }
+}
+
 function checkExpression(exp, text, errors) {
   exp = stripToString(exp);
-  var keywordMatch = exp.match(keywordRE);
+  var keywordMatch = exp.match(prohibitedKeywordRE);
   if (keywordMatch) {
     errors.push('- avoid using JavaScript keyword as property name: ' + ('"' + keywordMatch[0] + '" in expression ' + text));
   } else {
     try {
-      new Function(exp);
+      new Function('return ' + exp);
     } catch (e) {
       errors.push('- invalid expression: ' + text);
     }
@@ -14752,7 +14861,7 @@ function makeFunction(code) {
 
 var splitRE = /\r?\n/g;
 var emptyRE = /^(?:\/\/)?\s*$/;
-var isSpecialTag = makeMap('script,style,template', true);
+var isSpecialTag$1 = makeMap('script,style,template', true);
 
 /**
  * Parse a single-file component (*.vue) file into an SFC Descriptor Object.
@@ -14768,15 +14877,12 @@ function parseComponent(content) {
   var depth = 0;
   var currentBlock = null;
 
-  function start(tag, attrs) {
-    depth++;
-    if (depth > 1) {
-      return;
-    }
-    if (isSpecialTag(tag)) {
+  function start(tag, attrs, unary, start, end) {
+    if (isSpecialTag$1(tag) && depth === 0) {
       currentBlock = {
         type: tag,
-        content: ''
+        content: '',
+        start: end
       };
       checkAttrs(currentBlock, attrs);
       if (tag === 'style') {
@@ -14785,6 +14891,7 @@ function parseComponent(content) {
         sfc[tag] = currentBlock;
       }
     }
+    depth++;
   }
 
   function checkAttrs(block, attrs) {
@@ -14802,26 +14909,22 @@ function parseComponent(content) {
     }
   }
 
-  function end() {
-    depth--;
-    if (options.map && currentBlock && !currentBlock.src) {
-      addSourceMap(currentBlock);
-    }
-    currentBlock = null;
-  }
-
-  function chars(text) {
-    if (currentBlock) {
-      currentBlock.start = content.indexOf(text);
-      currentBlock.end = currentBlock.start + text.length;
-      text = deindent(text);
+  function end(tag, start, end) {
+    if (isSpecialTag$1(tag) && depth === 1 && currentBlock) {
+      currentBlock.end = start;
+      var text = deindent(content.slice(currentBlock.start, currentBlock.end));
       // pad content so that linters and pre-processors can output correct
       // line numbers in errors and warnings
       if (currentBlock.type !== 'template' && options.pad) {
         text = padContent(currentBlock) + text;
       }
       currentBlock.content = text;
+      if (options.map && !currentBlock.src) {
+        addSourceMap(currentBlock);
+      }
+      currentBlock = null;
     }
+    depth--;
   }
 
   function padContent(block) {
@@ -14861,10 +14964,8 @@ function parseComponent(content) {
   }
 
   parseHTML(content, {
-    isSpecialTag: isSpecialTag,
     start: start,
-    end: end,
-    chars: chars
+    end: end
   });
 
   return sfc;
