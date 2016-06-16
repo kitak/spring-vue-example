@@ -5,13 +5,13 @@ A Vue.js version of this example ( https://github.com/winterbe/spring-react-exam
 
 The `CommentBox` main view is isomorphic: HTML is initially rendered on the server with Nashhorn by utilizing `renderToString`. All interactive DOM manipulations are handled by Vue.js directly in the browser.
 
-#### How to launch
+### How to launch
 
 ```sh
 mvn spring-boot:run
 ```
 
-#### How to build JavaScript
+### How to build JavaScript
 
 ```sh
 # First time only
