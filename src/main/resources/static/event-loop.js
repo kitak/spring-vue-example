@@ -1,5 +1,9 @@
-// import from https://github.com/nikku/nashorn-async/blob/bf72651ee83e2dba5edbab1d80347cb76c3dda54/src/main/resources/js/event-loop.js
-//
+// name: nashorn-async
+// license: MIT (http://opensource.org/licenses/MIT)
+// authors: Nico Rehwaldt <git_nikku@nixis.de>
+// homepage: https://github.com/nikku/nashorn-async#readme
+// version: 4.0.0
+// import src/main/resources/js/event-loop.js
 /**
  * Execution support for simple hybrid (async/sync) script execution in nashorn.
  *
