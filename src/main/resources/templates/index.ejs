@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <div id="content">${content}</div>
-    <script src="bundle.js"></script>
+    <div id="content"><%- content %></div>
+    <script src="client.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            renderClient(${data});
+          renderClient(<%- json %>);
         });
     </script>
 </body>

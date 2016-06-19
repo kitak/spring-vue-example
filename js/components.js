@@ -1,11 +1,7 @@
-import 'babel-polyfill';
 import Vue from './vue/dist/vue.common';
-import createRenderer from './vue/packages/vue-server-renderer';
 import compileTemplate from './utils/compileTemplate';
-import awaitServer from './utils/awaitServer';
-const { renderToString } = createRenderer();
 
-const CommentForm = Vue.extend(compileTemplate({
+export const CommentForm = Vue.extend(compileTemplate({
   props: ['onCommentSubmit'],
   template: `
 <form>
@@ -34,7 +30,7 @@ const CommentForm = Vue.extend(compileTemplate({
   }
 }));
 
-const CommentList = Vue.extend(compileTemplate({
+export const CommentList = Vue.extend(compileTemplate({
   props: ['comments'],
   template: `
 <div class="commentList">
@@ -46,7 +42,7 @@ const CommentList = Vue.extend(compileTemplate({
 `
 }));
 
-const CommentBox = Vue.extend(compileTemplate({
+export const CommentBox = Vue.extend(compileTemplate({
   data: function() {
     return {
       comments: [],
@@ -103,30 +99,3 @@ const CommentBox = Vue.extend(compileTemplate({
 </div>
 `
 }));
-
-global.renderClient = (comments) => {
-  var data = comments || [];
-
-  const vm = new CommentBox();
-  vm.comments = data;
-  vm.$mount('#content');
-};
-
-global.renderServer = (comments) => {
-  Vue.config._isServer = true;
-
-  var data = Java.from(comments);
-
-  var results = awaitServer((done) => {
-    const vm = new CommentBox();
-    vm.comments = data;
-    renderToString(vm, (err, res) => {
-      done(err, res);
-    });
-  });
-  if (results.error) {
-    throw results.error;
-  } else {
-    return results.result;
-  }
-};
