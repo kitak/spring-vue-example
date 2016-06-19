@@ -17,7 +17,7 @@ public class VueRenderer {
         try {
             nashornScriptEngine.eval(read("static/event-loop.js"));
             nashornScriptEngine.eval(read("static/nashorn-polyfill.js"));
-            nashornScriptEngine.eval(read("static/bundle.js"));
+            nashornScriptEngine.eval(read("static/server.js"));
         } catch (ScriptException e) {
             throw new RuntimeException(e);
         }
