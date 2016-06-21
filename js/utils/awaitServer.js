@@ -6,7 +6,7 @@ const awaitServer = (fn) => {
 
   const done = (err, res) => {
     if (err) {
-      results.error = null;
+      results.error = err;
     } else {
       results.result = res;
     }
