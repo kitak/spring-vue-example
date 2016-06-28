@@ -110,15 +110,13 @@ var _components = require('./components');
 
 var _vueServerRenderer = require('./vue/packages/vue-server-renderer');
 
-var _vueServerRenderer2 = _interopRequireDefault(_vueServerRenderer);
-
 var _awaitServer = require('./utils/awaitServer');
 
 var _awaitServer2 = _interopRequireDefault(_awaitServer);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var _createRenderer = (0, _vueServerRenderer2.default)();
+var _createRenderer = (0, _vueServerRenderer.createRenderer)();
 
 var renderToString = _createRenderer.renderToString;
 
