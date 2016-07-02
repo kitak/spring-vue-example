@@ -1,4 +1,4 @@
-import Vue from './vue/dist/vue.common';
+import Vue from 'vue';
 import compileTemplate from './utils/compileTemplate';
 
 export const CommentForm = Vue.extend(compileTemplate({

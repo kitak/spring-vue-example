@@ -14,16 +14,7 @@ mvn spring-boot:run
 ### How to build JavaScript
 
 ```sh
-# First time only
-git submodule init
-
-git submodule update
-
-# If you want to update Vue.js
-cd js/vue && git pull origin next
 npm install
-cd ../..
 
-# Build bundle.js
 npm run build
 ```

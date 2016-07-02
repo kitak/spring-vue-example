@@ -1,4 +1,4 @@
-import { compileToFunctions } from '../vue/packages/vue-template-compiler';
+import { compileToFunctions } from 'vue-template-compiler';
 
 const compileTemplate = (options) => {
   const res = compileToFunctions(options.template, {

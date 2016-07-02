@@ -1,3 +1,0 @@
-[submodule "js/vue"]
-	path = js/vue
-	url = git@github.com:vuejs/vue.git

@@ -2,31 +2,34 @@ package info.kitak.vue;
 
 import jdk.nashorn.api.scripting.NashornScriptEngine;
 
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
+import javax.script.*;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.List;
 
 public class VueRenderer {
-    private NashornScriptEngine nashornScriptEngine;
+    private Object renderServerFunction;
 
     public VueRenderer() {
-        NashornScriptEngine nashornScriptEngine = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
+        NashornScriptEngine engine = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
         try {
-            nashornScriptEngine.eval(read("static/event-loop.js"));
-            nashornScriptEngine.eval(read("static/nashorn-polyfill.js"));
-            nashornScriptEngine.eval(read("static/server.js"));
+            CompiledScript compiled = engine.compile(read("static/server-bundle.js"));
+            this.renderServerFunction = compiled.eval();
         } catch (ScriptException e) {
             throw new RuntimeException(e);
         }
-        this.nashornScriptEngine = nashornScriptEngine;
     }
 
     public String renderCommentBox(List<Comment> comments) {
+        NashornScriptEngine engine = (NashornScriptEngine) new ScriptEngineManager().getEngineByName("nashorn");
         try {
-            Object html = nashornScriptEngine.invokeFunction("renderServer", comments);
+            ScriptContext newContext = new SimpleScriptContext();
+            newContext.setBindings(engine.createBindings(), ScriptContext.ENGINE_SCOPE);
+            Bindings engineScope = newContext.getBindings(ScriptContext.ENGINE_SCOPE);
+            engineScope.put("renderServer", this.renderServerFunction);
+            engine.setContext(newContext);
+            Object html = engine.invokeFunction("renderServer", comments);
             return String.valueOf(html);
         }
         catch (Exception e) {

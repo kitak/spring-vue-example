@@ -1,6 +1,6 @@
 import 'babel-polyfill';
 import {CommentBox} from './components';
-import {createRenderer} from './vue/packages/vue-server-renderer';
+import {createRenderer} from 'vue-server-renderer';
 import awaitServer from './utils/awaitServer';
 const { renderToString } = createRenderer();
 

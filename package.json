@@ -5,7 +5,7 @@
   "scripts": {
     "build": "npm run build:client & npm run build:server",
     "build:client": "browserify js/client.js -t babelify -t [ envify --NODE_ENV production --VUE_ENV client ] -o src/main/resources/static/client.js",
-    "build:server": "browserify js/server.js -t babelify -t [ envify --NODE_ENV production --VUE_ENV server ] -o src/main/resources/static/server.js"
+    "build:server": "browserify js/server.js -t babelify -t [ envify --NODE_ENV production --VUE_ENV server ] -o src/main/resources/static/server.js && cat src/main/resources/static/event-loop.js src/main/resources/static/nashorn-polyfill.js src/main/resources/static/server.js src/main/resources/static/return-render-function.js > src/main/resources/static/server-bundle.js"
   },
   "repository": {
     "type": "git",
@@ -18,7 +18,10 @@
   },
   "homepage": "https://github.com/kitak/spring-vue-example#readme",
   "dependencies": {
-    "babel-polyfill": "^6.9.1"
+    "babel-polyfill": "^6.9.1",
+    "vue": "^2.0.0-alpha.8",
+    "vue-server-renderer": "^2.0.0-alpha.8",
+    "vue-template-compiler": "^2.0.0-alpha.8"
   },
   "devDependencies": {
     "babel-cli": "^6.8.0",
