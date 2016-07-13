@@ -19,9 +19,9 @@
   "homepage": "https://github.com/kitak/spring-vue-example#readme",
   "dependencies": {
     "babel-polyfill": "^6.9.1",
-    "vue": "^2.0.0-alpha.8",
-    "vue-server-renderer": "^2.0.0-alpha.8",
-    "vue-template-compiler": "^2.0.0-alpha.8"
+    "vue": "^2.0.0-beta.1",
+    "vue-server-renderer": "^2.0.0-beta.1",
+    "vue-template-compiler": "^2.0.0-beta.1"
   },
   "devDependencies": {
     "babel-cli": "^6.8.0",
